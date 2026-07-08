@@ -1,0 +1,89 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  JEFE_AREA
+  MANTENIMIENTO
+  SUPERVISOR
+  GERENTE
+  ADMIN
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  password         String
+  nombre           String
+  cargo            String?
+  area             String?
+  role             Role     @default(USER)
+  mustChangePass   Boolean  @default(true)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  solicitudes      Solicitud[]    @relation("Creator")
+  asignadas        Solicitud[]    @relation("Assigned")
+  refreshTokens    RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+enum EstadoSolicitud {
+  PENDIENTE
+  VALORIZADA
+  AUTORIZADA
+  POSTERGADA
+  RECHAZADA
+}
+
+enum MotivoSolicitud {
+  INOCUIDAD
+  MEDIO_AMBIENTE
+  PRODUCTIVIDAD
+  SEGURIDAD
+  SINDICATO
+  GERENCIA
+}
+
+model Solicitud {
+  id                 String          @id @default(cuid())
+  titulo             String
+  descripcion        String
+  area               String
+  subArea            String?
+  motivo             MotivoSolicitud
+  fotografia         String?
+  estado             EstadoSolicitud @default(PENDIENTE)
+  costoEstimado      Float?
+  notasMantenimiento String?
+  comentarioGerente  String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  creatorId          String
+  creator            User            @relation("Creator", fields: [creatorId], references: [id])
+  assignedToId       String?
+  assignedTo         User?           @relation("Assigned", fields: [assignedToId], references: [id])
+
+  @@map("solicitudes")
+}
